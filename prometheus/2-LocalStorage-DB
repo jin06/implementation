@@ -1,0 +1,147 @@
+### DB struct
+
+  **代码位置** tsdb/db.go:169 
+
+```golang
+    type DB struct {
+        dir    string
+        locker *tsdbutil.DirLocker
+
+        logger         log.Logger
+        metrics        *dbMetrics
+        opts           *Options
+        chunkPool      chunkenc.Pool
+        compactor      Compactor
+        blocksToDelete BlocksToDeleteFunc
+
+        // Mutex for that must be held when modifying the general block layout.
+        mtx    sync.RWMutex
+        blocks []*Block
+
+        head *Head
+
+        compactc chan struct{}
+        donec    chan struct{}
+        stopc    chan struct{}
+
+        // cmtx ensures that compactions and deletions don't run simultaneously.
+        cmtx sync.Mutex
+
+        // autoCompactMtx ensures that no compaction gets triggered while
+        // changing the autoCompact var.
+        autoCompactMtx sync.Mutex
+        autoCompact    bool
+
+        // Cancel a running compaction when a shutdown is initiated.
+        compactCancel context.CancelFunc
+    }
+```
+
+#### 数据结构
+  
+DB主要的变量：
+    
+    DB 
+    -- *tsdbutil.DirLocker
+    -- chunkenc.Pool
+    -- Compactor
+    -- BlocksToDeleteFunc
+    -- []*Block
+    -- Head
+
+DirLocker
+
+```golang
+    type DirLocker struct {
+        logger log.Logger
+
+        createdCleanly prometheus.Gauge
+
+        releaser fileutil.Releaser
+        path     string
+    }
+```
+
+最终是体现在一个文件锁上 文件在tsdb/fileutil/flock_unix.go
+
+锁和解锁的代码。最终调用的是如下代码。利用文件锁，文件锁在文件inode上放锁，其他进程可以知道其状态，当进程关闭时文件描述符自动关闭，锁也会自动释放。
+```golang
+    func (l *unixLock) Release() error {
+        if err := l.set(false); err != nil {
+            return err
+        }
+        return l.f.Close()
+    }
+
+    func (l *unixLock) set(lock bool) error {
+        how := syscall.LOCK_UN
+        if lock {
+            how = syscall.LOCK_EX
+        }
+        return syscall.Flock(int(l.f.Fd()), how|syscall.LOCK_NB)
+    }
+```
+
+其他的结构主要的有，chunk 分配池，压缩，block数组，head。
+
+#### run()
+
+位置 tsdb/db.go:799
+
+
+启动以后是一个循环，循环内第一select用于接收鬼畜信号。
+
+第二个select三个case
+- 第一个每分钟执行一次，先上锁，然后执行 db.reloadBlocks()，然后解锁。之后会往db.compactcc 写入一个数据，以触发第二个case
+  - db.reloadBlocks 简单流程
+    - 先循循环遍历一边blocks，标记出哪些是要被删除的，然后进行一些列复杂的逻辑后删除掉它们。
+- 第二个接收压缩信号
+- 第三个接收整个循环的退出信号
+
+
+```golang
+func (db *DB) run() {
+	defer close(db.donec)
+
+	backoff := time.Duration(0)
+
+	for {
+		select {
+		case <-db.stopc:
+			return
+		case <-time.After(backoff):
+		}
+
+		select {
+		case <-time.After(1 * time.Minute):
+			db.cmtx.Lock()
+			if err := db.reloadBlocks(); err != nil {
+				level.Error(db.logger).Log("msg", "reloadBlocks", "err", err)
+			}
+			db.cmtx.Unlock()
+
+			select {
+			case db.compactc <- struct{}{}:
+			default:
+			}
+		case <-db.compactc:
+			db.metrics.compactionsTriggered.Inc()
+
+			db.autoCompactMtx.Lock()
+			if db.autoCompact {
+				if err := db.Compact(); err != nil {
+					level.Error(db.logger).Log("msg", "compaction failed", "err", err)
+					backoff = exponential(backoff, 1*time.Second, 1*time.Minute)
+				} else {
+					backoff = 0
+				}
+			} else {
+				db.metrics.compactionsSkipped.Inc()
+			}
+			db.autoCompactMtx.Unlock()
+		case <-db.stopc:
+			return
+		}
+	}
+}
+```
