@@ -134,3 +134,26 @@ func (ng *Engine) execEvalStmt(ctx context.Context, query *query, s *parser.Eval
 	return mat, warnings, nil
 }
 ```
+
+执行查询的分为两种类型，看上面代码，一种是获得立即值（瞬时值），另一种情况是获得范围的值。一般都是获得范围的值的查询。
+
+执行Eval()的代码在位置 promql/engine.go:696 
+最终执行 的位置在 promql/engine.go:1221 一直到 1683.   
+
+先看函数的代码，传入的参数是expr，这是一个接口. 先根据开始时间和结束时间以及间隔等值计算出numSteps，然后是trace的代码，这部分不粘贴过来。
+然后是一个switch case 代码，根据expr结构体类型做相应的处理
+
+```golang
+func (ev *evaluator) eval(expr parser.Expr) (parser.Value, storage.Warnings) {
+	...
+	switch e := expr.(type) {
+		case ...
+		case ...
+	}
+}
+
+```
+
+
+
+
