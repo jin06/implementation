@@ -1,0 +1,22 @@
+
+在 prometheus/7-Scrape.md 中抓取的数据最终是调用的 Append 方法。 
+也就是 这个结构  的 Append方法：
+
+tsdb/head_append.go:230
+
+```golang
+type headAppender struct {
+	head         *Head
+	minValidTime int64 // No samples below this timestamp are allowed.
+	mint, maxt   int64
+
+	series       []record.RefSeries      // New series held by this appender.
+	samples      []record.RefSample      // New samples held by this appender.
+	exemplars    []exemplarWithSeriesRef // New exemplars held by this appender.
+	sampleSeries []*memSeries            // Series corresponding to the samples held by this appender (using corresponding slice indices - same series may appear more than once).
+
+	appendID, cleanupAppendIDsBelow uint64
+	closed                          bool
+}
+```
+
