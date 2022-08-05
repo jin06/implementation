@@ -19,3 +19,11 @@ go_goroutine{instance="172.8.8.89",name="test1"}
 
 对应的是一个具体的值，简单理解就是Series加上时间和数字，prometheus每隔几秒采集到的目标的监控值就是samples。
 
+ ### Block
+
+ 一个逻辑上的概念，时序数据库的存储是按照时间序列为主线，每个时间段的数据存储在一起（比如两个小时），这就是block。对应到prometheus的实体就是 data 目录下那些id为名称的目录。每个block文件夹中有meta.json 
+ 有 index文件 有chunks文件夹（这里边放的就是数据存储的文件，每个文件最大512M），还有tomstones（标记数据删除的，因为prometheus只会在数据超过存储最大时间时才会真正删除文件）
+
+ ### Chunk 
+
+ 数据保存的最小单位，保存了一组samples
