@@ -5,4 +5,5 @@
 * 开始执行，主要的函数在cmd/kube-controller-manager/app/controllermanager.go:176。 
 * 开启事件处理流水线。接收事件然后发送到EventSink处理。
 * configz.Config
-* 一些安全接口
+* 一些安全接口. TokenController 配置
+* leader选举相关
