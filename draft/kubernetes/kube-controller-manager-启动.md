@@ -6,4 +6,11 @@
 * 开启事件处理流水线。接收事件然后发送到EventSink处理。
 * configz.Config
 * 一些安全接口. TokenController 配置
-* leader选举相关
+* leader选举相关，启动主要工作流程，参加选举。一旦成为leader后就执行主要的leader流程，
+    * 参与选举，等待自己成为leader。
+    * 成为leader后
+        * 初始化SATokenController
+        * 初始化一系列Controller
+            * 
+    * 失去leader身份后打印一下日志后就参与到下一次的leader选举
+* 如果开启了migration，同样运行一个选举函数，和上一步一样，但是成为主以后会运行migration相关的工作
