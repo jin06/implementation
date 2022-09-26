@@ -1,3 +1,7 @@
+> informer 解决的问题就是，客户端如何感知到k8s中各种资源的变化。这个是一个很基础的问题，因为k8s本身设计的核心就是以资源为中心，定义一种资源，然后各种其他的控制体监控资源的变化，根据资源定义的变化做出相应的action。  
+
+
+
 > informer 是kubernetes客户端api的封装。监听资源和通知资源变化的功能。
 
 > 项目 github.com:kubernetes/client-go.git
