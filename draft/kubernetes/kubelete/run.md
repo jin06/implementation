@@ -300,3 +300,10 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 	- 循环处理pod的更新
 - 根据配置开启api sever，一共三个 分别是：server 日志啊，profile什么的接口； server read only； server pod resource；
 前两个是http server，最后一个是grpc的
+
+总结一下，启动流程启动的主要东西
+- volumn相关的管理器，管理不同的storage plugin，volumn的挂载等操作
+- 监控相关的，容器运行时监控、节点监控、进程的监控
+- 状态相关，节点状态
+- pod的处理相关的
+- event时间相关
