@@ -52,3 +52,12 @@ go采用了一个自己来表示8个defer func 是否执行，所以open-coded�
 - 整个defer的执行时遍历所有的defer，一个一个执行。
 - 其中有一个优化，就是如果开启了openDefer ， 则执行逻辑会变化，没有开启，就正常执行defer 后的函数
     - 开启openDefer后，会执行 runOpenDeferFrame(d *_defer) bool 
+
+### gopanic 
+
+执行panic() 的逻辑，go编译时会将panic() 替换成这个函数，。
+
+804行
+
+- 执行已经进入到defer调用链路中的func
+
